@@ -42,7 +42,8 @@ def calculate_ema(data, period=20):
 
 def calculate_ema_trend(df):
     """
-    Calculate EMA 20 and check if last 18 candles are above it
+    Calculate EMA 20 and check if all price components (Open, High, Low, Close) 
+    of last 18 candles are above it
     """
     if df is None or len(df) < 20:
         return False
@@ -54,8 +55,14 @@ def calculate_ema_trend(df):
         # Get last 18 candles
         last_18 = df.tail(18)
 
-        # Check if all closes are above EMA20
-        trend_above = all(last_18['Close'] > last_18['EMA20'])
+        # Check if all price components are above EMA20
+        open_above = all(last_18['Open'] > last_18['EMA20'])
+        high_above = all(last_18['High'] > last_18['EMA20'])
+        low_above = all(last_18['Low'] > last_18['EMA20'])
+        close_above = all(last_18['Close'] > last_18['EMA20'])
+
+        # All conditions must be true
+        trend_above = all([open_above, high_above, low_above, close_above])
 
         return trend_above
     except Exception as e:
