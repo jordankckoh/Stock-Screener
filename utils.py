@@ -92,7 +92,7 @@ def send_telegram_alert(bot_token, chat_ids, df_results):
     except Exception as e:
         print(f"Failed to send Telegram alert: {str(e)}")
 
-def analyze_stocks(telegram_bot_token=None, telegram_chat_id=None):
+def analyze_stocks(telegram_bot_token=None, telegram_chat_ids=None):
     """
     Analyze all S&P 500 stocks for EMA trend
     """
