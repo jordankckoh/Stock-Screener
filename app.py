@@ -48,7 +48,7 @@ if st.button("🔄 Refresh Analysis"):
             progress_bar = st.progress(0)
             
             # Perform analysis
-            df_results = analyze_stocks(telegram_bot_token, telegram_chat_id)
+            df_results = analyze_stocks(telegram_bot_token, telegram_chat_ids)
             
             # Update progress bar to complete
             progress_bar.progress(100)
