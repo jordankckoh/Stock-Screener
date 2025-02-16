@@ -73,11 +73,14 @@ def send_telegram_alert(bot_token, chat_ids, df_results):
     Send results to multiple Telegram recipients
     """
     try:
+        print("Initializing Telegram alert...")
         from telegram import Bot
         import asyncio
         
         async def send_message():
+            print(f"Setting up bot with token: {bot_token[:10]}...")
             bot = Bot(token=bot_token)
+            print(f"Bot initialized, username: {(await bot.get_me()).username}")
             if df_results.empty:
                 message = "No stocks found matching the trend criteria."
             else:
