@@ -40,7 +40,7 @@ st.markdown("""
 if st.button("🔄 Refresh Analysis"):
     # Telegram configuration
     telegram_bot_token = st.secrets.get("TELEGRAM_BOT_TOKEN", None)
-    telegram_chat_id = st.secrets.get("TELEGRAM_CHAT_ID", None)
+    telegram_chat_ids = st.secrets.get("TELEGRAM_CHAT_IDS", [])
     
     try:
         with st.spinner("Analyzing S&P 500 stocks... This may take a few minutes..."):
