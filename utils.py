@@ -68,7 +68,30 @@ def calculate_ema_trend(df):
     except Exception as e:
         return False
 
-def analyze_stocks():
+def send_telegram_alert(bot_token, chat_id, df_results):
+    """
+    Send results to Telegram
+    """
+    try:
+        from telegram import Bot
+        import asyncio
+        
+        async def send_message():
+            bot = Bot(token=bot_token)
+            if df_results.empty:
+                message = "No stocks found matching the trend criteria."
+            else:
+                message = "Stocks trending above EMA 20:\n\n"
+                for _, row in df_results.iterrows():
+                    message += f"${row['Ticker']}: ${row['Last Price']:.2f}\n"
+            
+            await bot.send_message(chat_id=chat_id, text=message)
+            
+        asyncio.run(send_message())
+    except Exception as e:
+        print(f"Failed to send Telegram alert: {str(e)}")
+
+def analyze_stocks(telegram_bot_token=None, telegram_chat_id=None):
     """
     Analyze all S&P 500 stocks for EMA trend
     """
@@ -90,6 +113,12 @@ def analyze_stocks():
                         'Last Updated': df.index[-1].strftime('%Y-%m-%d %H:%M')
                     })
 
-        return pd.DataFrame(results)
+        df_results = pd.DataFrame(results)
+        
+        # Send Telegram alert if configured
+        if telegram_bot_token and telegram_chat_id:
+            send_telegram_alert(telegram_bot_token, telegram_chat_id, df_results)
+            
+        return df_results
     except Exception as e:
         raise Exception(f"Analysis failed: {str(e)}")
