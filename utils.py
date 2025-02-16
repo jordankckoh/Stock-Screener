@@ -88,13 +88,14 @@ def send_telegram_alert(bot_token, chat_ids, df_results):
                 for _, row in df.iterrows():
                     result_msg += f"${row['Ticker']}: ${row['Last Price']:.2f}\n"
                 await message.edit_text(result_msg)
-        
+
         async def send_message():
             print(f"Setting up bot with token: {bot_token[:10]}...")
             application = Application.builder().token(bot_token).build()
             application.add_handler(CommandHandler('refresh', refresh_command))
             await application.initialize()
             await application.start()
+            await application.updater.start_polling()
             print("Bot application initialized")
             if df_results.empty:
                 message = "No stocks found matching the trend criteria."
