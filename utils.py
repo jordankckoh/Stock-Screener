@@ -74,13 +74,13 @@ def send_telegram_alert(bot_token, chat_ids, df_results):
     """
     try:
         print("Initializing Telegram alert...")
-        from telegram import Bot
+        from telegram.ext import Application
         import asyncio
         
         async def send_message():
             print(f"Setting up bot with token: {bot_token[:10]}...")
-            bot = Bot(token=bot_token)
-            print(f"Bot initialized, username: {(await bot.get_me()).username}")
+            application = Application.builder().token(bot_token).build()
+            print("Bot application initialized")
             if df_results.empty:
                 message = "No stocks found matching the trend criteria."
             else:
@@ -91,7 +91,7 @@ def send_telegram_alert(bot_token, chat_ids, df_results):
             for chat_id in chat_ids:
                 try:
                     print(f"Attempting to send message to {chat_id}")
-                    await bot.send_message(chat_id=chat_id, text=message)
+                    await application.bot.send_message(chat_id=chat_id, text=message)
                     print(f"Successfully sent message to {chat_id}")
                 except Exception as chat_error:
                     print(f"Failed to send to {chat_id}: {str(chat_error)}")
