@@ -74,12 +74,27 @@ def send_telegram_alert(bot_token, chat_ids, df_results):
     """
     try:
         print("Initializing Telegram alert...")
-        from telegram.ext import Application
+        from telegram.ext import Application, CommandHandler
         import asyncio
+
+        async def refresh_command(update, context):
+            message = await update.message.reply_text("🔄 Refreshing stock analysis...")
+            df = analyze_stocks(bot_token, chat_ids)
+            
+            if df.empty:
+                await message.edit_text("No stocks found matching the trend criteria.")
+            else:
+                result_msg = "Stocks trending above EMA 20:\n\n"
+                for _, row in df.iterrows():
+                    result_msg += f"${row['Ticker']}: ${row['Last Price']:.2f}\n"
+                await message.edit_text(result_msg)
         
         async def send_message():
             print(f"Setting up bot with token: {bot_token[:10]}...")
             application = Application.builder().token(bot_token).build()
+            application.add_handler(CommandHandler('refresh', refresh_command))
+            await application.initialize()
+            await application.start()
             print("Bot application initialized")
             if df_results.empty:
                 message = "No stocks found matching the trend criteria."
