@@ -86,11 +86,18 @@ def send_telegram_alert(bot_token, chat_ids, df_results):
                     message += f"${row['Ticker']}: ${row['Last Price']:.2f}\n"
             
             for chat_id in chat_ids:
-                await bot.send_message(chat_id=chat_id, text=message)
+                try:
+                    print(f"Attempting to send message to {chat_id}")
+                    await bot.send_message(chat_id=chat_id, text=message)
+                    print(f"Successfully sent message to {chat_id}")
+                except Exception as chat_error:
+                    print(f"Failed to send to {chat_id}: {str(chat_error)}")
             
         asyncio.run(send_message())
     except Exception as e:
         print(f"Failed to send Telegram alert: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
 
 def analyze_stocks(telegram_bot_token=None, telegram_chat_ids=None):
     """
