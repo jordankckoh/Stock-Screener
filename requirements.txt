@@ -1,2 +1,5 @@
 yfinance
-analyze_stocks
+pandas
+numpy
+streamlit
+python-telegram-bot>=20.0
