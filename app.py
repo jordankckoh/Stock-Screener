@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from utils import analyze_stocks
 import time
+from datetime import datetime, timedelta
 
 # Page config
 st.set_page_config(
@@ -9,6 +10,14 @@ st.set_page_config(
     page_icon="📈",
     layout="wide"
 )
+
+# Initialize session state for caching
+if 'last_update' not in st.session_state:
+    st.session_state.last_update = None
+if 'cached_results' not in st.session_state:
+    st.session_state.cached_results = pd.DataFrame()
+if 'cache_expiry' not in st.session_state:
+    st.session_state.cache_expiry = datetime.now()
 
 # Custom CSS
 st.markdown("""
@@ -36,51 +45,77 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# Add refresh button
-if st.button("🔄 Refresh Analysis"):
-    # Telegram configuration
-    telegram_bot_token = st.secrets.get("TELEGRAM_BOT_TOKEN", None)
-    telegram_chat_ids = st.secrets.get("TELEGRAM_CHAT_IDS", [])
+# Cache status
+if st.session_state.last_update:
+    st.info(f"Last updated: {st.session_state.last_update}. Cache expires in: {(st.session_state.cache_expiry - datetime.now()).seconds//60} minutes")
+
+# Add refresh button with cache options
+col1, col2 = st.columns([3, 1])
+with col1:
+    refresh = st.button("🔄 Refresh Analysis")
+with col2:
+    force_refresh = st.checkbox("Force refresh (ignore cache)", False)
+
+if refresh:
+    # Check if we need to refresh or can use cache
+    current_time = datetime.now()
+    cache_valid = (not force_refresh and 
+                  st.session_state.last_update and 
+                  current_time < st.session_state.cache_expiry)
     
-    try:
-        with st.spinner("Analyzing S&P 500 stocks... This may take a few minutes..."):
-            # Create a progress bar
-            progress_bar = st.progress(0)
-            
-            # Perform analysis
-            df_results = analyze_stocks(telegram_bot_token, telegram_chat_ids)
-            
-            # Update progress bar to complete
-            progress_bar.progress(100)
-            time.sleep(0.5)  # Small delay for visual feedback
-            progress_bar.empty()  # Remove progress bar
-            
-            if df_results.empty:
-                st.warning("No stocks found matching the trend criteria.")
-            else:
-                # Display results
-                st.success(f"Found {len(df_results)} stocks trending above EMA 20! 🎯")
+    if cache_valid:
+        st.success("Using cached results!")
+        df_results = st.session_state.cached_results
+    else:
+        # Telegram configuration
+        telegram_bot_token = st.secrets.get("TELEGRAM_BOT_TOKEN", None)
+        telegram_chat_ids = st.secrets.get("TELEGRAM_CHAT_IDS", [])
+        
+        try:
+            with st.spinner("Analyzing S&P 500 stocks... This may take a few minutes..."):
+                # Create a progress bar
+                progress_bar = st.progress(0)
                 
-                # Format the dataframe
-                st.dataframe(
-                    df_results.style.format({
-                        'Last Price': '${:.2f}',
-                        'Volume': '{:,.0f}'
-                    }),
-                    use_container_width=True
-                )
+                # Perform analysis
+                df_results = analyze_stocks(telegram_bot_token, telegram_chat_ids)
                 
-                # Add download button
-                csv = df_results.to_csv(index=False)
-                st.download_button(
-                    label="📥 Download Results",
-                    data=csv,
-                    file_name="sp500_ema_trends.csv",
-                    mime="text/csv"
-                )
+                # Update progress bar to complete
+                progress_bar.progress(100)
+                time.sleep(0.5)  # Small delay for visual feedback
+                progress_bar.empty()  # Remove progress bar
                 
-    except Exception as e:
-        st.error(f"An error occurred: {str(e)}")
+                # Update cache
+                st.session_state.cached_results = df_results
+                st.session_state.last_update = current_time.strftime("%Y-%m-%d %H:%M:%S")
+                st.session_state.cache_expiry = current_time + timedelta(hours=1)
+                
+        except Exception as e:
+            st.error(f"An error occurred: {str(e)}")
+    
+    # Display results
+    if df_results.empty:
+        st.warning("No stocks found matching the trend criteria.")
+    else:
+        # Display results
+        st.success(f"Found {len(df_results)} stocks trending above EMA 20! 🎯")
+        
+        # Format the dataframe
+        st.dataframe(
+            df_results.style.format({
+                'Last Price': '${:.2f}',
+                'Volume': '{:,.0f}'
+            }),
+            use_container_width=True
+        )
+        
+        # Add download button
+        csv = df_results.to_csv(index=False)
+        st.download_button(
+            label="📥 Download Results",
+            data=csv,
+            file_name="sp500_ema_trends.csv",
+            mime="text/csv"
+        )
 else:
     st.info("👆 Click the refresh button to start the analysis")
 
@@ -92,6 +127,7 @@ st.markdown("""
     - Filters stocks where price is trending above the 20-period EMA
     - Confirms trend by checking the last 18 hourly candles
     - Updates data in real-time when refreshed
+    - Results are cached for 1 hour to improve performance
     
     ⚠️ **Disclaimer**: This tool is for informational purposes only and should not be considered as financial advice.
 """)
