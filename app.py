@@ -29,7 +29,7 @@ st.markdown("""
             font-size: 14px;
         }
         .title-container {
-            background-color: #f0f2f6;
+            background-color: #606062;
             padding: 1rem;
             border-radius: 5px;
             margin-bottom: 2rem;
