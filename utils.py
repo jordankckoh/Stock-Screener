@@ -2,6 +2,8 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
+import concurrent.futures
+import time
 
 def get_sp500_tickers():
     """
@@ -46,7 +48,7 @@ def calculate_ema_trend(df):
     of last 18 candles are above it
     """
     if df is None or len(df) < 20:
-        return False
+        return False, None, None, None
 
     try:
         # Calculate EMA 20 using pandas built-in function
@@ -64,9 +66,31 @@ def calculate_ema_trend(df):
         # All conditions must be true
         trend_above = all([open_above, high_above, low_above, close_above])
 
-        return trend_above
+        if trend_above:
+            last_price = df['Close'].iloc[-1]
+            last_volume = df['Volume'].iloc[-1]
+            last_updated = df.index[-1]
+            return trend_above, last_price, last_volume, last_updated
+        
+        return False, None, None, None
     except Exception as e:
-        return False
+        return False, None, None, None
+
+def process_ticker(ticker):
+    """
+    Process a single ticker - for parallel execution
+    """
+    df = get_hourly_data(ticker)
+    if df is not None:
+        trend_above, last_price, last_volume, last_updated = calculate_ema_trend(df)
+        if trend_above:
+            return {
+                'Ticker': ticker,
+                'Last Price': round(last_price, 2),
+                'Volume': int(last_volume),
+                'Last Updated': last_updated.strftime('%Y-%m-%d %H:%M')
+            }
+    return None
 
 def send_telegram_alert(bot_token, chat_ids, df_results):
     """
@@ -120,32 +144,31 @@ def send_telegram_alert(bot_token, chat_ids, df_results):
 
 def analyze_stocks(telegram_bot_token=None, telegram_chat_ids=None):
     """
-    Analyze all S&P 500 stocks for EMA trend
+    Analyze all S&P 500 stocks for EMA trend using parallel processing
     """
     try:
+        # Get S&P 500 tickers
         tickers = get_sp500_tickers()
         results = []
 
-        for ticker in tickers:
-            df = get_hourly_data(ticker)
-            if df is not None:
-                trend_above = calculate_ema_trend(df)
-                if trend_above:
-                    last_price = df['Close'].iloc[-1]
-                    last_volume = df['Volume'].iloc[-1]
-                    results.append({
-                        'Ticker': ticker,
-                        'Last Price': round(last_price, 2),
-                        'Volume': int(last_volume),
-                        'Last Updated': df.index[-1].strftime('%Y-%m-%d %H:%M')
-                    })
+        # Use ThreadPoolExecutor for parallel processing
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            # Submit all tasks
+            future_to_ticker = {executor.submit(process_ticker, ticker): ticker for ticker in tickers}
+            
+            # Process results as they complete
+            for i, future in enumerate(concurrent.futures.as_completed(future_to_ticker)):
+                result = future.result()
+                if result:
+                    results.append(result)
 
+        # Create DataFrame from results
         df_results = pd.DataFrame(results)
         
         # Send Telegram alert if configured
-        if telegram_bot_token and telegram_chat_ids:
+        if telegram_bot_token and telegram_chat_ids and not df_results.empty:
             send_telegram_alert(telegram_bot_token, telegram_chat_ids, df_results)
             
-        return df_results
+        return df_results if not df_results.empty else pd.DataFrame()
     except Exception as e:
         raise Exception(f"Analysis failed: {str(e)}")
