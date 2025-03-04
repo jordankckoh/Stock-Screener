@@ -4,4 +4,4 @@ numpy
 streamlit
 lxml
 httpx
-python-telegram-bot>=20.0
+python-telegram-bot>=21.0
