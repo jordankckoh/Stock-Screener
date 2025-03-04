@@ -2,4 +2,5 @@ yfinance
 pandas
 numpy
 streamlit
+lxml
 python-telegram-bot>=20.0
